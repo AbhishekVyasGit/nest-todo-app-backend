@@ -20,6 +20,9 @@ import { AuthModule } from './auth/auth.module';
         database: configService.get('DATABASE_NAME'),
         synchronize: configService.get('DATABASE_SYNC'),
         logging: configService.get('DATABASE_LOGGING'),
+        ssl: {
+          rejectUnauthorized: false,
+        },
         entities: [__dirname + "/**/*.entity{.ts,.js}"],
       })
     }),
