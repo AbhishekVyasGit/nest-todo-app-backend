@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -12,18 +13,27 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) { }
 
-  create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     try {
+      const { email, password, firstName, lastName } = createUserDto;
+      const userExists = await this.userRepository.findOne({ where: { email } });
+      if (userExists) {
+        throw new ConflictException('Email already registered, please log in');
+      }
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
       const user: User = new User();
-      user.email = createUserDto.email;
-      user.firstName = createUserDto.firstName;
-      user.lastName = createUserDto.lastName;
-      user.password = createUserDto.password;
+      user.email = email;
+      user.firstName = firstName;
+      user.lastName = lastName;
+      user.password = hashedPassword;
       user.role = Constants.ROLES.NORMAL_ROLE;
-      return this.userRepository.save(user);
+      const userProfile = await this.userRepository.save(user);
+      const { password: _, ...result } = userProfile;
+      return result;
     } catch (err) {
       throw new HttpException(
-        `User not created.`,
+        err.message,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -41,7 +51,7 @@ export class UserService {
     }
   }
 
-  async findAll() {
+  async findAll(): Promise<User[]> {
     const userData = await this.userRepository.find();
     if (!userData || userData.length == 0) {
       throw new NotFoundException('User data not found!');
@@ -51,7 +61,7 @@ export class UserService {
 
   async findUserByEmail(email: string): Promise<User> {
     try {
-      return await this.userRepository.findOneOrFail({ where: { email: email } });
+      return await this.userRepository.findOneOrFail({ where: { email: email } });;
     } catch (err) {
       console.log('Get User by email error: ', err.message ?? err);
       throw new HttpException(

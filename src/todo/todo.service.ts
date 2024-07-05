@@ -21,7 +21,7 @@ export class TodoService {
     todo.date = new Date().toLocaleString();
     todo.completed = false;
     todo.user = await this.userService.findUserById(userId);
-    return this.todoRepository.save(todo);
+    return await this.todoRepository.save(todo);
   }
 
 
@@ -60,7 +60,9 @@ export class TodoService {
       );
     }
 
-    foundTodo = { ...foundTodo, ...updateTodoDto, completed: true };
+    // foundTodo = { ...foundTodo, ...updateTodoDto, completed: true };
+    Object.assign(foundTodo, updateTodoDto);
+    foundTodo.completed = true;
     return await this.todoRepository.save(foundTodo);
   }
 
